@@ -95,7 +95,7 @@ def qa_chain(user_message, history, model_selector, embedding_selector):
     # Initialize the selected chatbot
     lazy_model = models[model_selector]
     lazy_embedding = embeddings[embedding_selector]
-    qa = initialize_chatbot(lazy_model, lazy_embedding)
+    qa = initialize_chatbot(lazy_model, lazy_embedding, config)
 
     response = qa({"question": user_message, "chat_history": history})
     metadata_list = [doc.metadata for doc in response["source_documents"]]
@@ -202,6 +202,9 @@ def build_single_model_ui(models, embeddings):
 
     # select new model will clear the history and update the state and chatbot
     model_selector.change(clear_history, None, [state, chatbot, textbox] + btn_list, queue=False)
+
+    # select new model will clear the history and update the state and chatbot
+    embedding_selector.change(clear_history, None, [state, chatbot, textbox] + btn_list, queue=False)
     
     # after user types in the text and press enter, it will add the text to the history and update the state and chatbot
     textbox.submit(qa_chain, inputs=[textbox, state, model_selector, embedding_selector], outputs=[state, chatbot, textbox] + btn_list)
