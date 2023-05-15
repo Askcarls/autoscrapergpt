@@ -12,6 +12,9 @@ import yaml
 from chatbot import initialize_chatbot
 
 qa = None
+current_model = None
+current_embedding = None
+
 # Load the configurations for the models and embeddings
 with open("config.yaml", "r") as f:
     config = yaml.safe_load(f)
@@ -35,9 +38,20 @@ no_change_btn = gr.Button.update()
 enable_btn = gr.Button.update(interactive=True)
 disable_btn = gr.Button.update(interactive=False)
 
+block_css = code_highlight_css + """
+pre {
+  white-space: pre-wrap;       /* Since CSS 2.1 */
+  white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+  white-space: -pre-wrap;      /* Opera 4-6 */
+  white-space: -o-pre-wrap;    /* Opera 7 */
+  word-wrap: break-word;       /* Internet Explorer 5.5+ */
+  overflow-x: auto;            /* Add horizontal scrollbar if needed */
+  overflow-y: hidden;          /* Prevent vertical scrollbar */
+}
+"""
 
 
-'''this code is based on https://github.com/lm-sys/FastChat/blob/main/fastchat/serve/gradio_web_server.py'''
+'''following code is based on https://github.com/lm-sys/FastChat/blob/main/fastchat/serve/gradio_web_server.py'''
 
 
 # get user's interaction chat logs and store them in a json file
@@ -89,13 +103,16 @@ def clear_history():
     return (state, [], "") + (disable_btn,) * 5
 
 def qa_chain(user_message, history, model_selector, embedding_selector):
-    global qa
+    global qa, current_model, current_embedding
     history = history or []
 
-    # Initialize the selected chatbot
-    lazy_model = models[model_selector]
-    lazy_embedding = embeddings[embedding_selector]
-    qa = initialize_chatbot(lazy_model, lazy_embedding, config)
+    # Initialize the selected chatbot if it's different from the current one
+    if model_selector != current_model or embedding_selector != current_embedding:
+        lazy_model = models[model_selector]
+        lazy_embedding = embeddings[embedding_selector]
+        qa = initialize_chatbot(lazy_model, lazy_embedding, config)
+        current_model = model_selector
+        current_embedding = embedding_selector
 
     response = qa({"question": user_message, "chat_history": history})
     metadata_list = [doc.metadata for doc in response["source_documents"]]
@@ -108,17 +125,7 @@ def qa_chain(user_message, history, model_selector, embedding_selector):
     history.append((user_message, formatted_response))
     return (history,history, "") + (enable_btn,) * 5
 
-block_css = code_highlight_css + """
-pre {
-  white-space: pre-wrap;       /* Since CSS 2.1 */
-  white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
-  white-space: -pre-wrap;      /* Opera 4-6 */
-  white-space: -o-pre-wrap;    /* Opera 7 */
-  word-wrap: break-word;       /* Internet Explorer 5.5+ */
-  overflow-x: auto;            /* Add horizontal scrollbar if needed */
-  overflow-y: hidden;          /* Prevent vertical scrollbar */
-}
-"""
+
 def build_single_model_ui(models, embeddings):
     '''create frontend UI for the chatbot'''
     # add disclaimer
